@@ -1,0 +1,6 @@
+*.csv
+.vscode/
+.env
+*.log
+venv/
+students.csv
