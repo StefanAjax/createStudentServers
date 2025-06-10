@@ -77,11 +77,11 @@ while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
     IP=$(pct exec "$NEXT_ID" ip addr show eth0 | awk '/inet / {print $2}' | cut -d/ -f1)
     MAC=$(pct exec "$NEXT_ID" cat /sys/class/net/eth0/address)
     LAST_OCTET=$(echo "$IP" | awk -F. '{print $4}')
-    SSH_PORT=$((20000 + LAST_OCTET))
+    SSH_PORT=$((62000 + LAST_OCTET))
   else
     IP="10.80.X.X"
     MAC="XX:XX:XX:XX:XX:XX"
-    SSH_PORT="20XXX"
+    SSH_PORT="62XXX"
   fi
 
   # Make DHCP leases static and configure port forwarding on mikroTik Router
@@ -89,12 +89,13 @@ while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
     echo "⚠️  Failed to get IP/MAC for container $NEXT_ID ($HOSTNAME)"
     echo "  $HOSTNAME → IP: $IP, MAC: $MAC, SSH port: $SSH_PORT"
   else
-    echo "  ✅ $HOSTNAME → IP: $IP, MAC: $MAC, SSH port: $SSH_PORT"
+    
     
     if $DRY_RUN; then
-      echo "  🔸 Would assign DHCP lease on MikroTik"
-      echo "  🔸 Would add port forward for SSH on MikroTik"
+      echo "  🔸 Would assign DHCP static lease on MikroTik"
+      echo "  🔸 Would add port forward for SSH on MikroTik $SSH_PORT -> 22"
     else
+      echo "  ✅ $HOSTNAME → IP: $IP, MAC: $MAC, SSH port: $SSH_PORT"
       sshpass -p "$MIKROTIK_PASS" ssh -o StrictHostKeyChecking=no "$MIKROTIK_USER@$MIKROTIK_HOST" \
         "/ip dhcp-server lease add address=$IP mac-address=$MAC server=$MIKROTIK_DHCP_SERVER comment=\"Created by script $HOSTNAME\" disabled=no"
 
@@ -155,20 +156,21 @@ while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
   HOSTNAME=$(echo "$RAW_HOSTNAME" | iconv -f utf8 -t ascii//translit | sed 's/[^a-z0-9-]//g')
   SERVER_NAME="$HOSTNAME.$DOMAIN_SUFFIX"
 
-  # Wait for DNS to resolve
-  for i in $(seq 1 $((DNS_TIMEOUT / 5))); do
-    if host "$SERVER_NAME" >/dev/null 2>&1; then
-      echo "  🌐 DNS for $SERVER_NAME is ready"
-      break
-    fi
-    echo "  🌐 Waiting until DNS for $SERVER_NAME resolves"
-    sleep 2
-  done
+
 
   # Request certificate
   if $DRY_RUN; then
     echo "  🔸 Would request Let's Encrypt certificate for $SERVER_NAME"
   else
+    # Wait for DNS to resolve
+    for i in $(seq 1 $((DNS_TIMEOUT / 5))); do
+      if host "$SERVER_NAME" >/dev/null 2>&1; then
+        echo "  🌐 DNS for $SERVER_NAME is ready"
+        break
+      fi
+      echo "  🌐 Waiting until DNS for $SERVER_NAME resolves"
+      sleep 2
+    done
     sshpass -p "$NGINX_PASS" ssh -o StrictHostKeyChecking=no "$NGINX_USER@$NGINX_HOST" \
     "sudo certbot --nginx --non-interactive --agree-tos --email $ADMIN_EMAIL --expand --redirect --no-eff-email --domain $SERVER_NAME"
   fi
