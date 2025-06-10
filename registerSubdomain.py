@@ -1,7 +1,6 @@
 #!/usr/local/bin/python  
 # -*- coding: utf-8 -*-  
   
-import calendar  
 import sys  
 import time  
 import xmlrpc.client
