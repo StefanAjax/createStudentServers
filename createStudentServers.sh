@@ -57,7 +57,6 @@ while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
   RAW_HOSTNAME=$(echo "$RAW_HOSTNAME" | tr '[:upper:]' '[:lower:]')
   HOSTNAME=$(echo "$RAW_HOSTNAME" | iconv -f utf8 -t ascii//translit | sed 's/[^a-z0-9-]//g')
 
-
   # Clone the template for each student VM
   if $DRY_RUN; then
     echo "📦 Preparing container $NEXT_ID: $CLASS, $FIRSTNAME $LASTNAME → $HOSTNAME"
@@ -97,7 +96,7 @@ while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
       echo "  🔸 Would add port forward for SSH on MikroTik"
     else
       sshpass -p "$MIKROTIK_PASS" ssh -o StrictHostKeyChecking=no "$MIKROTIK_USER@$MIKROTIK_HOST" \
-        "/ip dhcp-server lease add address=$IP mac-address=$MAC server=dhcp-080 comment=\"Created by script $HOSTNAME\" disabled=no"
+        "/ip dhcp-server lease add address=$IP mac-address=$MAC server=$MIKROTIK_DHCP_SERVER comment=\"Created by script $HOSTNAME\" disabled=no"
 
       sshpass -p "$MIKROTIK_PASS" ssh -o StrictHostKeyChecking=no "$MIKROTIK_USER@$MIKROTIK_HOST" \
         "/ip firewall nat add chain=dstnat dst-port=$SSH_PORT protocol=tcp action=dst-nat to-addresses=$IP to-ports=22 comment=\"SSH $HOSTNAME\""
@@ -143,8 +142,6 @@ EOF
   ((NEXT_ID++))
 done 3< "$CSV_FILE"
 
-
-
 # Get certificates for the new subdomains
 while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
   # Strip Windows carriage returns
@@ -167,7 +164,6 @@ while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
     echo "  🌐 Waiting until DNS for $SERVER_NAME resolves"
     sleep 2
   done
-
 
   # Get certificate from letsencrypt
   sshpass -p "$NGINX_PASS" ssh -o StrictHostKeyChecking=no "$NGINX_USER@$NGINX_HOST" \
