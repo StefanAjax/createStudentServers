@@ -1,5 +1,28 @@
 #!/bin/bash
 
+# ------------------------------------------------------------------------------
+# Script: createStudentServers.sh
+#
+# Description:
+#   This script automates the deployment of LXC containers (student VMs) on a 
+#   Proxmox VE host using a template container. It:
+#     - Reads student data from a CSV file
+#     - Clones and starts containers with unique hostnames
+#     - Assigns static DHCP leases and SSH port forwards on a MikroTik router
+#     - Registers DNS subdomains for each student server
+#     - Sets up Nginx reverse proxy configuration on a remote host
+#     - Requests Let's Encrypt SSL certificates for each subdomain
+#     - Supports dry-run mode to simulate actions without making changes
+#
+# Logging:
+#   - All console output is appended to deploy.log
+#   - A summary of each deployed container is appended to result.log
+#
+# Usage:
+#   ./createStudentServers.sh           # Execute the script normally
+#   ./createStudentServers.sh --dry-run # Run in dry-run mode (no changes made)
+# ------------------------------------------------------------------------------
+
 set -euo pipefail
 IFS=$'\n\t'
 
@@ -37,7 +60,7 @@ if [[ -z "${MIKROTIK_HOST:-}" || -z "${MIKROTIK_USER:-}" || -z "${MIKROTIK_PASS:
 fi
 
 # Check if the resource pool exists
-if ! pvesh get /pools --output-format=json | jq -e ".[] | select(.poolid==\"$RESOURCE_POOL\")" >/dev/null; then
+if ! pvesh get /pools --output-format=json | jq -e ".[] | select(.poolid==\"$RESOURCE_POOL\")"; then
   echo "Creating resource pool '$RESOURCE_POOL'..."
   $DRY_RUN || pvesh create /pools --poolid "$RESOURCE_POOL"
 else
@@ -63,8 +86,8 @@ while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
     echo "📦 Preparing container $NEXT_ID: $CLASS, $FIRSTNAME $LASTNAME → $HOSTNAME"
     echo "  🔸 Would clone $BASE_CONTAINER_ID to $NEXT_ID with hostname $HOSTNAME"
   else
-    pct clone "$BASE_CONTAINER_ID" "$NEXT_ID" --hostname "$HOSTNAME" --pool "$RESOURCE_POOL" >/dev/null 2>&1
-    pct start "$NEXT_ID" >/dev/null 2>&1
+    pct clone "$BASE_CONTAINER_ID" "$NEXT_ID" --hostname "$HOSTNAME" --pool "$RESOURCE_POOL"
+    pct start "$NEXT_ID"
     # used to sleep here before doing the loop below
   fi
 
@@ -103,7 +126,7 @@ while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
       sshpass -p "$MIKROTIK_PASS" ssh -o StrictHostKeyChecking=no "$MIKROTIK_USER@$MIKROTIK_HOST" \
         "/ip firewall nat add chain=dstnat dst-port=$SSH_PORT protocol=tcp action=dst-nat to-addresses=$IP to-ports=22 comment=\"SSH $HOSTNAME\""
       sleep 2
-      pct exec "$NEXT_ID" reboot >/dev/null 2>&1
+      pct exec "$NEXT_ID" reboot
     fi
 
     # Create subdomains and DNS records for each student
@@ -122,7 +145,7 @@ while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
     if $DRY_RUN; then
       echo "  🔸 Would create nginx server block for $SERVER_NAME on $NGINX_HOST"
     else
-      sshpass -p "$NGINX_PASS" ssh -o StrictHostKeyChecking=no "$NGINX_USER@$NGINX_HOST" "sudo tee $NGINX_CONF_PATH >/dev/null" <<EOF
+      sshpass -p "$NGINX_PASS" ssh -o StrictHostKeyChecking=no "$NGINX_USER@$NGINX_HOST" "sudo tee $NGINX_CONF_PATH" <<EOF
 server {
     server_name $SERVER_NAME;
 
@@ -165,7 +188,7 @@ while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
   else
     # Wait for DNS to resolve
     for i in $(seq 1 $((DNS_TIMEOUT / 5))); do
-      if host "$SERVER_NAME" >/dev/null 2>&1; then
+      if host "$SERVER_NAME"; then
         echo "  🌐 DNS for $SERVER_NAME is ready"
         break
       fi
