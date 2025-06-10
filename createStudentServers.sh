@@ -12,7 +12,6 @@
 #     - Registers DNS subdomains for each student server
 #     - Sets up Nginx reverse proxy configuration on a remote host
 #     - Requests Let's Encrypt SSL certificates for each subdomain
-#     - Supports dry-run mode to simulate actions without making changes
 #
 # Logging:
 #   - All console output is appended to deploy.log
@@ -20,8 +19,11 @@
 #
 # Usage:
 #   Should be run as root on the proxmox server
-#   ./createStudentServers.sh           # Execute the script normally
-#   ./createStudentServers.sh --dry-run # Run in dry-run mode (no changes made)
+#   Needs two arguments: 
+#     --pool (Proxmox resource pool)
+#     --start-id (VM-ID of the first container in the series)
+#
+#   Use a third optional argument --dry-run to simulate actions without making changes
 # ------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -31,8 +33,8 @@ CSV_FILE="students.csv"
 BASE_CONTAINER_ID=130
 STORAGE="local-lvm"
 DNS_TIMEOUT=900
-RESOURCE_POOL="" # Argument to the 
-NEXT_ID=""
+RESOURCE_POOL=""  # Argument --pool to the script 
+NEXT_ID=""        # Argument --start-id to the script
 DRY_RUN=false
 
 # Parse command-line arguments
