@@ -28,11 +28,52 @@ IFS=$'\n\t'
 
 CSV_FILE="students.csv"
 BASE_CONTAINER_ID=130
-NEXT_ID=300
-RESOURCE_POOL="WSProg"
 STORAGE="local-lvm"
-DRY_RUN=false
 DNS_TIMEOUT=900
+RESOURCE_POOL="" # Argument to the 
+NEXT_ID=""
+DRY_RUN=false
+
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run)
+      DRY_RUN=true
+      echo "🧪 Dry-run mode: No changes will be made."
+      shift
+      ;;
+    --pool)
+      if [[ -n "${2:-}" ]]; then
+        RESOURCE_POOL="$2"
+        shift 2
+      else
+        echo "❌ Error: --pool requires a value"
+        exit 1
+      fi
+      ;;
+    --start-id)
+      if [[ -n "${2:-}" ]]; then
+        NEXT_ID="$2"
+        shift 2
+      else
+        echo "❌ Error: --start-id requires a value"
+        exit 1
+      fi
+      ;;
+    *)
+      echo "❌ Unknown argument: $1"
+      echo "Usage: $0 --pool RESOURCE_POOL --start-id START_ID [--dry-run]"
+      exit 1
+      ;;
+  esac
+done
+
+# Check required arguments
+if [[ -z "$RESOURCE_POOL" || -z "$NEXT_ID" ]]; then
+  echo "❌ Missing required arguments."
+  echo "Usage: $0 --pool RESOURCE_POOL --start-id START_ID [--dry-run]"
+  exit 1
+fi
 
 [[ -f "$CSV_FILE" ]] || { echo "❌ CSV file '$CSV_FILE' not found"; exit 1; }
 
