@@ -96,9 +96,9 @@ while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
       echo "  🔸 Would assign DHCP static lease on MikroTik"
       echo "  🔸 Would add port forward for SSH on MikroTik $SSH_PORT -> 22"
     else
-      echo "$HOSTNAME.$DOMAIN_SUFFIX → VMID: $NEXT_ID IP: $IP, MAC: $MAC, SSH port: $SSH_PORT" >&4
+      echo "$HOSTNAME.$DOMAIN_SUFFIX → VMID: $NEXT_ID IP: $IP, SSH port: $SSH_PORT" >&4
       sshpass -p "$MIKROTIK_PASS" ssh -o StrictHostKeyChecking=no "$MIKROTIK_USER@$MIKROTIK_HOST" \
-        "/ip dhcp-server lease add address=$IP mac-address=$MAC server=$MIKROTIK_DHCP_SERVER comment=\"Created by script $HOSTNAME\" disabled=no"
+        "/ip dhcp-server lease add address=$IP mac-address=$MAC server=dhcp-080 comment=\"Created by script $HOSTNAME\" disabled=no"
 
       sshpass -p "$MIKROTIK_PASS" ssh -o StrictHostKeyChecking=no "$MIKROTIK_USER@$MIKROTIK_HOST" \
         "/ip firewall nat add chain=dstnat dst-port=$SSH_PORT protocol=tcp action=dst-nat to-addresses=$IP to-ports=22 comment=\"SSH $HOSTNAME\""
