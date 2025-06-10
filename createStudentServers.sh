@@ -112,7 +112,7 @@ while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
       python3 registerSubdomain.py $HOSTNAME
     fi
   fi
-  # TODO: Add server blocks on nginx
+  # Add server blocks on nginx
     NGINX_CONF_PATH="/etc/nginx/sites-available/$HOSTNAME"
     NGINX_ENABLED_PATH="/etc/nginx/sites-enabled/$HOSTNAME"
     SERVER_NAME="$HOSTNAME.$DOMAIN_SUFFIX"
@@ -125,7 +125,7 @@ server {
     server_name $SERVER_NAME;
 
     location / {
-        proxy_pass http://$IP:$SERVER_PORTS/;
+        proxy_pass http://$IP:$STUDENT_SERVE_PORT/;
         proxy_set_header Host \$host;
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_set_header X-Real-IP \$remote_addr;
@@ -165,7 +165,11 @@ while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
     sleep 2
   done
 
-  # Get certificate from letsencrypt
-  sshpass -p "$NGINX_PASS" ssh -o StrictHostKeyChecking=no "$NGINX_USER@$NGINX_HOST" \
-  "sudo certbot --nginx --non-interactive --agree-tos --email $ADMIN_EMAIL --expand --redirect --no-eff-email --domain $SERVER_NAME"
+  # Request certificate
+  if $DRY_RUN; then
+    echo "  🔸 Would request Let's Encrypt certificate for $SERVER_NAME"
+  else
+    sshpass -p "$NGINX_PASS" ssh -o StrictHostKeyChecking=no "$NGINX_USER@$NGINX_HOST" \
+    "sudo certbot --nginx --non-interactive --agree-tos --email $ADMIN_EMAIL --expand --redirect --no-eff-email --domain $SERVER_NAME"
+  fi
 done 3< "$CSV_FILE"
