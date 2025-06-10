@@ -5,7 +5,7 @@ IFS=$'\n\t'
 
 CSV_FILE="students.csv"
 BASE_CONTAINER_ID=130
-NEXT_ID=200
+NEXT_ID=300
 RESOURCE_POOL="WSProg"
 STORAGE="local-lvm"
 DRY_RUN=false
@@ -14,6 +14,7 @@ DNS_TIMEOUT=900
 [[ -f "$CSV_FILE" ]] || { echo "❌ CSV file '$CSV_FILE' not found"; exit 1; }
 
 exec > >(tee -a deploy.log) 2>&1
+exec 4>>result.log
 
 # Parse command-line arguments
 if [[ "${1:-}" == "--dry-run" ]]; then
@@ -95,7 +96,7 @@ while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
       echo "  🔸 Would assign DHCP static lease on MikroTik"
       echo "  🔸 Would add port forward for SSH on MikroTik $SSH_PORT -> 22"
     else
-      echo "  ✅ $HOSTNAME → IP: $IP, MAC: $MAC, SSH port: $SSH_PORT"
+      echo "$HOSTNAME.$DOMAIN_SUFFIX → VMID: $NEXT_ID IP: $IP, MAC: $MAC, SSH port: $SSH_PORT" >&4
       sshpass -p "$MIKROTIK_PASS" ssh -o StrictHostKeyChecking=no "$MIKROTIK_USER@$MIKROTIK_HOST" \
         "/ip dhcp-server lease add address=$IP mac-address=$MAC server=$MIKROTIK_DHCP_SERVER comment=\"Created by script $HOSTNAME\" disabled=no"
 
