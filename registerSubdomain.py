@@ -9,12 +9,13 @@ from dotenv import load_dotenv
   
 def main():  
     load_dotenv()
+    
     global_api_username = os.getenv('DNS_API_USER')
     global_api_password = os.getenv('DNS_API_PASS')
     school_ip_address = os.getenv('SCHOOL_IP_ADDRESS')
     global_dns_uri = os.getenv('DNS_API_URI')
-  
-    domain = 'ntig.dev'
+    domain_suffix = os.getenv('DOMAIN_SUFFIX')
+
     subdomain = sys.argv[1]
     
     client = xmlrpc.client.ServerProxy(uri = global_dns_uri, encoding = 'utf-8')  
