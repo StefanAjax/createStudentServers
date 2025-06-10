@@ -19,6 +19,7 @@
 #   - A summary of each deployed container is appended to result.log
 #
 # Usage:
+#   Should be run as root on the proxmox server
 #   ./createStudentServers.sh           # Execute the script normally
 #   ./createStudentServers.sh --dry-run # Run in dry-run mode (no changes made)
 # ------------------------------------------------------------------------------
