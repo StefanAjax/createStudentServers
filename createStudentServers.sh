@@ -170,7 +170,7 @@ while IFS=',' read -r CLASS FIRSTNAME LASTNAME ALIAS <&3; do
       echo "  🔸 Would assign DHCP static lease on MikroTik"
       echo "  🔸 Would add port forward for SSH on MikroTik $SSH_PORT -> 22"
     else
-      echo "$(date '+%Y-%m-%d %H:%M:%S') - $CLASS, $FIRSTNAME $LASTNAME got $HOSTNAME.$DOMAIN_SUFFIX → VMID: $NEXT_ID IP: $IP, should serve on $STUDENT_SERVE_PORT, SSH port: $SSH_PORT, Connection string ssh root@$DOMAIN_SUFFIX -p $SSH_PORT" >&4
+      echo "$(date '+%Y-%m-%d %H:%M:%S') - $CLASS, $FIRSTNAME $LASTNAME got $HOSTNAME.$DOMAIN_SUFFIX → VMID: $NEXT_ID IP: $IP, should serve on $STUDENT_SERVE_PORT, SSH port: $SSH_PORT, Connection string: ssh root@$DOMAIN_SUFFIX -p $SSH_PORT" >&4
       sshpass -p "$MIKROTIK_PASS" ssh -o StrictHostKeyChecking=no "$MIKROTIK_USER@$MIKROTIK_HOST" \
         "/ip dhcp-server lease add address=$IP mac-address=$MAC server=dhcp-080 comment=\"Created by script $HOSTNAME\" disabled=no"
 
