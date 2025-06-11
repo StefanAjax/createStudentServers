@@ -23,6 +23,8 @@
 #     --pool (Proxmox resource pool)
 #     --start-id (VM-ID of the first container in the series)
 #
+#   The csv-file contains CLASS,LASTNAME,FIRSTNAME,ALIAS. ALIAS is optional.
+#   
 #   Use a third optional argument --dry-run to simulate actions without making changes
 # ------------------------------------------------------------------------------
 
@@ -111,7 +113,7 @@ else
   echo "Resource pool '$RESOURCE_POOL' already exists."
 fi
 
-while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
+while IFS=',' read -r CLASS FIRSTNAME LASTNAME ALIAS <&3; do
   # Skip empty or header lines
   [[ -z "$CLASS" || "$CLASS" == "CLASS" ]] && continue
 
@@ -121,7 +123,12 @@ while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
   FIRSTNAME="${FIRSTNAME//$'\r'/}"
 
   # Build a valid hostname
-  RAW_HOSTNAME="${CLASS}-${FIRSTNAME// /_}-${LASTNAME// /_}"
+  if [[ -n "$ALIAS" ]]; then
+    RAW_HOSTNAME="${ALIAS// /_}"
+  else
+    RAW_HOSTNAME="${CLASS}-${FIRSTNAME// /_}-${LASTNAME// /_}"
+  fi
+
   RAW_HOSTNAME=$(echo "$RAW_HOSTNAME" | tr '[:upper:]' '[:lower:]')
   HOSTNAME=$(echo "$RAW_HOSTNAME" | iconv -f utf8 -t ascii//translit | sed 's/[^a-z0-9-]//g')
 
@@ -163,7 +170,7 @@ while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
       echo "  🔸 Would assign DHCP static lease on MikroTik"
       echo "  🔸 Would add port forward for SSH on MikroTik $SSH_PORT -> 22"
     else
-      echo "$HOSTNAME.$DOMAIN_SUFFIX → VMID: $NEXT_ID IP: $IP, SSH port: $SSH_PORT" >&4
+      echo "$(date '+%Y-%m-%d %H:%M:%S') - $CLASS, $FIRSTNAME $LASTNAME got $HOSTNAME.$DOMAIN_SUFFIX → VMID: $NEXT_ID IP: $IP, should serve on $STUDENT_SERVE_PORT, SSH port: $SSH_PORT" >&4
       sshpass -p "$MIKROTIK_PASS" ssh -o StrictHostKeyChecking=no "$MIKROTIK_USER@$MIKROTIK_HOST" \
         "/ip dhcp-server lease add address=$IP mac-address=$MAC server=dhcp-080 comment=\"Created by script $HOSTNAME\" disabled=no"
 
@@ -182,8 +189,8 @@ while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
     fi
   fi
   # Add server blocks on nginx
-    NGINX_CONF_PATH="/etc/nginx/sites-available/$HOSTNAME"
-    NGINX_ENABLED_PATH="/etc/nginx/sites-enabled/$HOSTNAME"
+    NGINX_CONF_PATH="/etc/nginx/sites-available/$(date '+%Y-%m-%d-%H-%M-%S')$HOSTNAME"
+    NGINX_ENABLED_PATH="/etc/nginx/sites-enabled/$(date '+%Y-%m-%d%H-%M-%S')$HOSTNAME"
     SERVER_NAME="$HOSTNAME.$DOMAIN_SUFFIX"
 
     if $DRY_RUN; then
@@ -212,14 +219,19 @@ EOF
 done 3< "$CSV_FILE"
 
 # Get certificates for the new subdomains
-while IFS=',' read -r CLASS LASTNAME FIRSTNAME <&3; do
+while IFS=',' read -r CLASS FIRSTNAME LASTNAME ALIAS <&3; do
   # Strip Windows carriage returns
   CLASS="${CLASS//$'\r'/}"
   LASTNAME="${LASTNAME//$'\r'/}"
   FIRSTNAME="${FIRSTNAME//$'\r'/}"
 
   # Build a valid hostname
-  RAW_HOSTNAME="${CLASS}-${FIRSTNAME// /_}-${LASTNAME// /_}"
+  if [[ -n "$ALIAS" ]]; then
+    RAW_HOSTNAME="${ALIAS// /_}"
+  else
+    RAW_HOSTNAME="${CLASS}-${FIRSTNAME// /_}-${LASTNAME// /_}"
+  fi
+
   RAW_HOSTNAME=$(echo "$RAW_HOSTNAME" | tr '[:upper:]' '[:lower:]')
   HOSTNAME=$(echo "$RAW_HOSTNAME" | iconv -f utf8 -t ascii//translit | sed 's/[^a-z0-9-]//g')
   SERVER_NAME="$HOSTNAME.$DOMAIN_SUFFIX"

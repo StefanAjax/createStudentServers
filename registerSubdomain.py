@@ -19,7 +19,7 @@ def main():
     subdomain = sys.argv[1]
     
     client = xmlrpc.client.ServerProxy(uri = global_dns_uri, encoding = 'utf-8')  
-    response = client.addSubdomain(global_api_username, global_api_password, domain, subdomain)
+    response = client.addSubdomain(global_api_username, global_api_password, domain_suffix, subdomain)
     # print(response)
     time.sleep(1)
     record_obj = {'type' : 'A',  
@@ -28,7 +28,7 @@ def main():
             'rdata' : school_ip_address,
             'record_id' : 10,
             }
-    response = client.addZoneRecord(global_api_username, global_api_password, domain, subdomain, record_obj)
+    response = client.addZoneRecord(global_api_username, global_api_password, domain_suffix, subdomain, record_obj)
     # print(response)
   
 if __name__ == '__main__':  
