@@ -189,8 +189,8 @@ while IFS=',' read -r CLASS FIRSTNAME LASTNAME ALIAS <&3; do
     fi
   fi
   # Add server blocks on nginx
-    NGINX_CONF_PATH="/etc/nginx/sites-available/$(date '+%Y-%m-%d-%H-%M-%S')$HOSTNAME"
-    NGINX_ENABLED_PATH="/etc/nginx/sites-enabled/$(date '+%Y-%m-%d%H-%M-%S')$HOSTNAME"
+    NGINX_CONF_PATH="/etc/nginx/sites-available/$(date '+%Y-%m-%d-%H-%M-%S')-$HOSTNAME"
+    NGINX_ENABLED_PATH="/etc/nginx/sites-enabled/$(date '+%Y-%m-%d%H-%M-%S')-$HOSTNAME"
     SERVER_NAME="$HOSTNAME.$DOMAIN_SUFFIX"
 
     if $DRY_RUN; then
