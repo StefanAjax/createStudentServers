@@ -9,8 +9,8 @@
 #     - Reads student data from a CSV file
 #     - Clones and starts containers with unique hostnames
 #     - Assigns static DHCP leases and SSH port forwards on a MikroTik router
-#     - Registers DNS subdomains for each student server
 #     - Sets up Nginx reverse proxy configuration on a remote host
+#       (DNS is covered by the wildcard record *.ntig.dev)
 #     - Requests Let's Encrypt SSL certificates for each subdomain
 #
 # Logging:
@@ -32,9 +32,8 @@ set -euo pipefail
 IFS=$'\n\t'
 
 CSV_FILE="students.csv"
-BASE_CONTAINER_ID=130
+BASE_CONTAINER_ID=140  # trixietemplV3
 STORAGE="local-lvm"
-DNS_TIMEOUT=900
 RESOURCE_POOL=""  # Argument --pool to the script 
 NEXT_ID=""        # Argument --start-id to the script
 DRY_RUN=false
@@ -144,11 +143,7 @@ while IFS=',' read -r CLASS FIRSTNAME LASTNAME ALIAS <&3; do
 
   # Get the IP and MAC information of each student VM
   if ! $DRY_RUN; then
-    for i in {1..12}; do
-      if pct exec "$NEXT_ID" ip addr show eth0 | grep -q 'inet '; then break; fi
-      echo "sleeping some more"
-      sleep 5
-    done
+    sleep 18
     IP=$(pct exec "$NEXT_ID" ip addr show eth0 | awk '/inet / {print $2}' | cut -d/ -f1)
     MAC=$(pct exec "$NEXT_ID" cat /sys/class/net/eth0/address)
     LAST_OCTET=$(echo "$IP" | awk -F. '{print $4}')
@@ -179,18 +174,11 @@ while IFS=',' read -r CLASS FIRSTNAME LASTNAME ALIAS <&3; do
       sleep 2
       pct exec "$NEXT_ID" reboot
     fi
-
-    # Create subdomains and DNS records for each student
-    if $DRY_RUN; then
-      echo "  🔸 Would add subdomain and DNS-records for $HOSTNAME.$DOMAIN_SUFFIX"
-    else
-      source ./venv/bin/activate
-      python3 registerSubdomain.py $HOSTNAME
-    fi
   fi
   # Add server blocks on nginx
-    NGINX_CONF_PATH="/etc/nginx/sites-available/$(date '+%Y-%m-%d-%H-%M-%S')-$HOSTNAME"
-    NGINX_ENABLED_PATH="/etc/nginx/sites-enabled/$(date '+%Y-%m-%d%H-%M-%S')-$HOSTNAME"
+    NGINX_FILE_NAME="$(date '+%Y-%m-%d-%H-%M-%S')-$HOSTNAME"
+    NGINX_CONF_PATH="/etc/nginx/sites-available/$NGINX_FILE_NAME"
+    NGINX_ENABLED_PATH="/etc/nginx/sites-enabled/$NGINX_FILE_NAME"
     SERVER_NAME="$HOSTNAME.$DOMAIN_SUFFIX"
 
     if $DRY_RUN; then
@@ -242,15 +230,6 @@ while IFS=',' read -r CLASS FIRSTNAME LASTNAME ALIAS <&3; do
   if $DRY_RUN; then
     echo "  🔸 Would request Let's Encrypt certificate for $SERVER_NAME"
   else
-    # Wait for DNS to resolve
-    for i in $(seq 1 $((DNS_TIMEOUT / 5))); do
-      if host "$SERVER_NAME"; then
-        echo "  🌐 DNS for $SERVER_NAME is ready"
-        break
-      fi
-      echo "  🌐 Waiting until DNS for $SERVER_NAME resolves"
-      sleep 2
-    done
     sshpass -p "$NGINX_PASS" ssh -o StrictHostKeyChecking=no "$NGINX_USER@$NGINX_HOST" \
     "sudo certbot --nginx --non-interactive --agree-tos --email $ADMIN_EMAIL --expand --redirect --no-eff-email --domain $SERVER_NAME"
   fi
