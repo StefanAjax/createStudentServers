@@ -32,7 +32,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 CSV_FILE="students.csv"
-BASE_CONTAINER_ID=140  # trixietemplV3
+BASE_CONTAINER_ID=141  # trixietemplV4
 STORAGE="local-lvm"
 RESOURCE_POOL=""  # Argument --pool to the script 
 NEXT_ID=""        # Argument --start-id to the script
