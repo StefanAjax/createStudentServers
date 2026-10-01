@@ -187,6 +187,7 @@ while IFS=',' read -r CLASS FIRSTNAME LASTNAME ALIAS <&3; do
       sshpass -p "$NGINX_PASS" ssh -o StrictHostKeyChecking=no "$NGINX_USER@$NGINX_HOST" "sudo tee $NGINX_CONF_PATH" <<EOF
 server {
     server_name $SERVER_NAME;
+    proxy_connect_timeout 5s;
 
     location / {
         proxy_pass http://$IP:$STUDENT_SERVE_PORT/;
